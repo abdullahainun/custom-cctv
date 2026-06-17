@@ -7,9 +7,8 @@ const GO2RTC_BASE = `http://${SERVER}:1984`
 const FRIGATE_BASE = `http://${SERVER}:5000`
 
 // ─── Camera list ──────────────────────────────────────────────────────────────
-// Add more entries here to display additional cameras in the grid.
-
-const CAMERAS = [
+// Fallback cameras used when go2rtc is unreachable.
+const FALLBACK_CAMERAS = [
   {
     id:       'cam01',
     name:     'Kamera 01',
@@ -17,28 +16,67 @@ const CAMERAS = [
     subSrc:   'hikvision_sub',
     mainSrc:  'hikvision_main',
   },
-  // {
-  //   id:       'cam02',
-  //   name:     'Kamera 02',
-  //   location: 'Koridor',
-  //   subSrc:   'cam02_sub',
-  //   mainSrc:  'cam02_main',
-  // },
-  // {
-  //   id:       'cam03',
-  //   name:     'Kamera 03',
-  //   location: 'Area Parkir',
-  //   subSrc:   'cam03_sub',
-  //   mainSrc:  'cam03_main',
-  // },
-  // {
-  //   id:       'cam04',
-  //   name:     'Kamera 04',
-  //   location: 'Lapangan',
-  //   subSrc:   'cam04_sub',
-  //   mainSrc:  'cam04_main',
-  // },
 ]
+
+// Friendly names & locations for auto-discovered cameras (by stream prefix).
+const CAMERA_NAMES = {
+  hikvision: { name: 'Kamera 01', location: 'Gerbang Utama' },
+}
+
+// Populated at startup — either from go2rtc API or FALLBACK_CAMERAS.
+let currentCameras = []
+
+// ─── Dynamic camera discovery from go2rtc ──────────────────────────────────
+
+async function fetchCameras() {
+  try {
+    const res = await fetch(`${GO2RTC_BASE}/api/streams`)
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    return groupCameras(await res.json())
+  } catch (err) {
+    console.warn('[Dashboard] go2rtc unreachable, using fallback:', err.message)
+    return null
+  }
+}
+
+function groupCameras(streams) {
+  const prefixes = {}
+  let counter = 0
+
+  for (const name of Object.keys(streams)) {
+    let prefix, role
+
+    if (name.endsWith('_main')) {
+      prefix = name.slice(0, -5)
+      role = 'main'
+    } else if (name.endsWith('_sub')) {
+      prefix = name.slice(0, -4)
+      role = 'sub'
+    } else {
+      prefix = name
+      role = 'standalone'
+    }
+
+    if (!prefixes[prefix]) {
+      prefixes[prefix] = { id: `cam${String(++counter).padStart(2, '0')}`, subSrc: null, mainSrc: null }
+    }
+
+    if (role === 'sub') prefixes[prefix].subSrc = name
+    else if (role === 'main') prefixes[prefix].mainSrc = name
+    else prefixes[prefix].subSrc = prefixes[prefix].mainSrc = name
+  }
+
+  return Object.entries(prefixes).map(([prefix, cam]) => {
+    const friendly = CAMERA_NAMES[prefix] || {}
+    return {
+      id: cam.id,
+      name: friendly.name || `Kamera ${cam.id.replace('cam', '')}`,
+      location: friendly.location || '',
+      subSrc: cam.subSrc || cam.mainSrc,
+      mainSrc: cam.mainSrc || cam.subSrc,
+    }
+  })
+}
 
 // ─── Camera grid rendering ────────────────────────────────────────────────────
 
@@ -131,8 +169,8 @@ function renderCameras() {
   const grid = document.getElementById('camera-grid')
   grid.innerHTML = ''
 
-  CAMERAS.forEach(cam => grid.appendChild(buildTile(cam)))
-  applyGridLayout(CAMERAS.length)
+  currentCameras.forEach(cam => grid.appendChild(buildTile(cam)))
+  applyGridLayout(currentCameras.length)
 }
 
 // ─── Modal player ─────────────────────────────────────────────────────────────
@@ -242,7 +280,7 @@ class ModalPlayer {
 let modalPlayer = null
 
 function openModal(camId) {
-  const cam = CAMERAS.find(c => c.id === camId)
+  const cam = currentCameras.find(c => c.id === camId)
   if (!cam) return
 
   // Close sidebar on mobile when opening a camera
@@ -390,14 +428,16 @@ function checkSystemStatus() {
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  const dynamic = await fetchCameras()
+  currentCameras = dynamic || FALLBACK_CAMERAS
   renderCameras()
 
   // Re-layout grid on resize / orientation change
   let resizeTimer
   window.addEventListener('resize', () => {
     clearTimeout(resizeTimer)
-    resizeTimer = setTimeout(() => applyGridLayout(CAMERAS.length), 150)
+    resizeTimer = setTimeout(() => applyGridLayout(currentCameras.length), 150)
   })
 
   // ESC closes sidebar on mobile
