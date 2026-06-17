@@ -214,7 +214,7 @@ class ModalPlayer {
 
     if (window.Hls && Hls.isSupported()) {
       this._destroyHLS()
-      this.hlsInst = new Hls({ enableWorker: true, lowLatencyMode: true, backBufferLength: 10 })
+      this.hlsInst = new Hls({ enableWorker: true, lowLatencyMode: true, backBufferLength: 2, liveSyncDuration: 3, liveMaxLatencyDuration: 5 })
       this.hlsInst.loadSource(url)
       this.hlsInst.attachMedia(this._video)
       this.hlsInst.on(Hls.Events.MANIFEST_PARSED, () => this._video.play().catch(() => {}))
