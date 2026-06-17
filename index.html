@@ -26,7 +26,6 @@
     .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
     .scrollbar-thin::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 2px; }
 
-    /* Camera tile — iframe fills cell */
     .cam-tile { position: relative; background: #000; overflow: hidden; }
     .cam-tile iframe,
     .cam-tile video { position: absolute; inset: 0; width: 100%; height: 100%; border: none; }
@@ -35,200 +34,44 @@
 
 <body class="bg-zinc-950 text-zinc-100 h-screen flex flex-col overflow-hidden antialiased">
 
-  <!-- ═══════════════════════════════════════════════════════════ HEADER -->
-  <header class="flex-shrink-0 h-11 flex items-center justify-between px-4
-                 bg-zinc-900 border-b border-zinc-800/70 z-10">
+  <!-- Floating header overlay (semi-transparent, clicks pass through to grid) -->
+  <header class="absolute top-0 inset-x-0 z-10 flex items-center justify-between px-3 sm:px-4 py-2
+                 bg-gradient-to-b from-black/70 to-transparent pointer-events-none select-none">
 
-    <!-- Brand -->
-    <div class="flex items-center gap-2.5">
-      <div class="w-6 h-6 rounded bg-emerald-600 flex items-center justify-center flex-shrink-0">
-        <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+    <div class="flex items-center gap-2 pointer-events-auto">
+      <div class="w-5 h-5 rounded bg-emerald-600 flex items-center justify-center flex-shrink-0">
+        <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round"
             d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72
                M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9
                A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
         </svg>
       </div>
-      <div class="leading-none">
-        <div class="text-sm font-semibold tracking-tight">SMK Maskumambang 1 Dukun</div>
-        <div class="text-xs text-zinc-500 mt-0.5">CCTV Monitor</div>
-      </div>
+      <span class="text-xs font-medium text-white/80 hidden sm:inline">SMK Maskumambang 1 Dukun</span>
     </div>
 
-    <!-- Right: status + clock + dark-mode -->
-    <div class="flex items-center gap-5">
-
-      <!-- Service status pills -->
-      <div class="hidden sm:flex items-center gap-4 text-xs">
-        <span class="flex items-center gap-1.5">
-          <span id="hdr-dot-go2rtc" class="w-1.5 h-1.5 rounded-full bg-zinc-600 transition-colors"></span>
-          <span class="text-zinc-500">go2rtc</span>
-        </span>
-        <span class="w-px h-3 bg-zinc-800"></span>
-        <span class="flex items-center gap-1.5">
-          <span id="hdr-dot-frigate" class="w-1.5 h-1.5 rounded-full bg-zinc-600 transition-colors"></span>
-          <span class="text-zinc-500">Frigate</span>
-        </span>
+    <div class="flex items-center gap-3 pointer-events-auto">
+      <a href="dashboard.html"
+         class="text-[10px] text-white/30 hover:text-white/70 transition-colors hidden sm:inline">Dashboard</a>
+      <div class="text-right leading-none">
+        <div id="clock" class="text-xs font-mono text-white/70">00:00:00</div>
+        <div id="datestamp" class="text-[10px] text-white/40 mt-0.5">—</div>
       </div>
-
-      <!-- Clock -->
-      <div class="hidden sm:block text-right leading-none">
-        <div id="clock" class="text-xs font-mono text-zinc-300">00:00:00</div>
-        <div id="datestamp" class="text-xs text-zinc-600 mt-0.5">—</div>
-      </div>
-
-      <!-- Mobile sidebar toggle -->
-      <button id="sidebar-toggle-btn" onclick="toggleSidebar()"
-              class="lg:hidden p-2 rounded hover:bg-zinc-800 transition-colors text-zinc-500 hover:text-zinc-300"
-              title="Buka menu">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-        </svg>
-      </button>
-
-      <!-- Dark-mode toggle -->
-      <button onclick="toggleDarkMode()"
-              class="p-1.5 rounded hover:bg-zinc-800 transition-colors text-zinc-500 hover:text-zinc-300 min-w-[36px] min-h-[36px] flex items-center justify-center"
-              title="Toggle dark / light">
-        <svg id="icon-sun" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round"
-            d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591
-               M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636
-               M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
-        </svg>
-        <svg id="icon-moon" class="w-4 h-4 hidden" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round"
-            d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75
-               0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21
-               12.75 21a9.753 9.753 0 009.002-5.998z" />
-        </svg>
-      </button>
     </div>
   </header>
 
-  <!-- ══════════════════════════════════════════════════════ MAIN CONTENT -->
-  <main class="flex flex-1 min-h-0 overflow-hidden">
-
-    <!-- ─────────────────────────────────── CAMERA GRID -->
-    <div id="grid-wrap" class="flex-1 overflow-y-auto scrollbar-thin p-2">
-      <div id="camera-grid" class="grid gap-2 h-full">
+  <!-- ─────────────────────────────── CAMERA GRID (full-screen) ──────────────── -->
+  <main class="flex-1 min-h-0 overflow-hidden">
+    <div id="grid-wrap" class="h-full overflow-y-auto scrollbar-thin p-1.5">
+      <div id="camera-grid" class="grid gap-1.5 h-full">
         <!-- Populated by dashboard.js -->
       </div>
     </div>
-
-    <!-- Mobile sidebar backdrop -->
-    <div id="sidebar-backdrop" class="fixed inset-0 z-40 bg-black/60 hidden lg:hidden" onclick="toggleSidebar()"></div>
-
-    <!-- ─────────────────────────────────── SIDEBAR -->
-    <aside id="sidebar"
-           class="fixed lg:relative inset-y-0 right-0 z-50 lg:z-auto
-                  w-72 lg:w-52 flex-shrink-0
-                  border-l border-zinc-800/60 flex flex-col bg-zinc-900/30
-                  translate-x-full lg:translate-x-0 transition-transform duration-200 ease-in-out shadow-2xl lg:shadow-none">
-
-      <!-- Drawer header (mobile only) -->
-      <div class="lg:hidden flex items-center justify-between px-4 py-3 border-b border-zinc-800/60 flex-shrink-0">
-        <span class="text-sm font-medium text-zinc-300">Menu</span>
-        <button onclick="toggleSidebar()"
-                class="p-2 rounded hover:bg-zinc-800 transition-colors text-zinc-500 hover:text-zinc-300">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-
-      <!-- Detection log -->
-      <div class="flex-1 flex flex-col min-h-0">
-        <div class="flex-shrink-0 flex items-center justify-between px-3 py-2 border-b border-zinc-800/60">
-          <span class="text-xs font-medium text-zinc-400">Deteksi Objek</span>
-          <span class="live-pulse w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-        </div>
-        <div class="flex-shrink-0 px-3 py-1.5 bg-amber-500/5 border-b border-amber-500/10">
-          <p class="text-xs text-amber-600/70 leading-snug">
-            Simulasi — sambungkan MQTT Frigate untuk data nyata.
-          </p>
-        </div>
-        <div id="detection-list"
-             class="flex-1 overflow-y-auto scrollbar-thin p-2 space-y-1 min-h-0">
-        </div>
-      </div>
-
-      <!-- Session stats -->
-      <div class="flex-shrink-0 border-t border-zinc-800/60 p-3">
-        <div class="text-xs text-zinc-600 uppercase tracking-widest mb-2">Sesi ini</div>
-        <div class="grid grid-cols-3 gap-1 text-center">
-          <div>
-            <div id="cnt-person" class="text-base font-bold tabular-nums text-zinc-200">0</div>
-            <div class="text-xs text-zinc-600 mt-0.5">Person</div>
-          </div>
-          <div>
-            <div id="cnt-vehicle" class="text-base font-bold tabular-nums text-zinc-200">0</div>
-            <div class="text-xs text-zinc-600 mt-0.5">Vehicle</div>
-          </div>
-          <div>
-            <div id="cnt-motion" class="text-base font-bold tabular-nums text-zinc-200">0</div>
-            <div class="text-xs text-zinc-600 mt-0.5">Motion</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- System status -->
-      <div class="flex-shrink-0 border-t border-zinc-800/60 p-3">
-        <div class="text-xs text-zinc-600 uppercase tracking-widest mb-2">Status Sistem</div>
-        <div class="space-y-2">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-1.5">
-              <div id="sys-dot-go2rtc" class="w-1.5 h-1.5 rounded-full bg-zinc-600 transition-colors"></div>
-              <span class="text-xs text-zinc-400">go2rtc</span>
-            </div>
-            <span id="sys-lbl-go2rtc" class="text-xs text-zinc-600">—</span>
-          </div>
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-1.5">
-              <div id="sys-dot-frigate" class="w-1.5 h-1.5 rounded-full bg-zinc-600 transition-colors"></div>
-              <span class="text-xs text-zinc-400">Frigate</span>
-            </div>
-            <span id="sys-lbl-frigate" class="text-xs text-zinc-600">—</span>
-          </div>
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-1.5">
-              <div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
-              <span class="text-xs text-zinc-400">Dashboard</span>
-            </div>
-            <span class="text-xs text-emerald-600">Online</span>
-          </div>
-        </div>
-        <button onclick="checkSystemStatus()"
-                class="mt-2.5 w-full text-xs text-zinc-600 hover:text-zinc-400 transition-colors py-1">
-          Refresh ↺
-        </button>
-      </div>
-
-      <!-- Quick links -->
-      <div class="flex-shrink-0 border-t border-zinc-800/60 p-3 space-y-0.5">
-        <a href="http://100.74.162.72:1984" target="_blank"
-           class="flex items-center justify-between py-1.5 text-xs text-zinc-500 hover:text-zinc-300 transition-colors group">
-          <span>go2rtc UI</span>
-          <svg class="w-3 h-3 opacity-40 group-hover:opacity-70 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-          </svg>
-        </a>
-        <a href="http://100.74.162.72:5000" target="_blank"
-           class="flex items-center justify-between py-1.5 text-xs text-zinc-500 hover:text-zinc-300 transition-colors group">
-          <span>Frigate</span>
-          <svg class="w-3 h-3 opacity-40 group-hover:opacity-70 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-          </svg>
-        </a>
-      </div>
-
-    </aside>
   </main>
 
-  <!-- ══════════════════════════════════════════════ CAMERA MODAL (expanded) -->
+  <!-- ══════════════════════════════════════════════ CAMERA MODAL (expanded) ── -->
   <div id="camera-modal" class="hidden fixed inset-0 z-50 bg-black/95 flex flex-col">
 
-    <!-- Modal header -->
     <div class="flex-shrink-0 flex items-center justify-between px-4 py-2.5 border-b border-white/10">
       <div class="flex items-center gap-2">
         <span class="live-pulse w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
@@ -243,7 +86,6 @@
       </button>
     </div>
 
-    <!-- Player -->
     <div class="flex-1 flex items-center justify-center p-3 min-h-0">
       <div id="modal-player-wrap" class="relative bg-black" style="width:100%;height:100%;max-width:1280px;">
         <iframe id="modal-iframe"
@@ -256,7 +98,6 @@
       </div>
     </div>
 
-    <!-- Modal controls -->
     <div class="flex-shrink-0 flex items-center justify-center gap-2 px-2 sm:px-4 py-2.5 border-t border-white/10 flex-wrap gap-y-2">
       <button id="modal-btn-quality"
               onclick="modalPlayer && modalPlayer.toggleQuality()"
@@ -278,7 +119,6 @@
 
   </div>
 
-  <script src="js/detections.js"></script>
   <script src="js/dashboard.js"></script>
 </body>
 </html>
