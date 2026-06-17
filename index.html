@@ -57,7 +57,7 @@
       </div>
       <div>
         <h1 class="text-sm font-semibold leading-tight">CCTV Monitor</h1>
-        <p class="text-xs text-slate-500">Frigate &bull; go2rtc &bull; 192.168.100.2</p>
+        <p class="text-xs text-slate-500">Frigate &bull; go2rtc &bull; 100.74.162.72</p>
       </div>
     </div>
 
@@ -134,7 +134,7 @@
           <!-- Primary: WebRTC via go2rtc iframe -->
           <iframe
             id="player-iframe"
-            src="http://192.168.100.2:1984/links.html?src=hikvision_sub&mode=webrtc"
+            src="http://100.74.162.72:1984/links.html?src=hikvision_sub&mode=webrtc"
             allow="autoplay; camera; microphone"
             allowfullscreen
           ></iframe>
@@ -206,18 +206,18 @@
 
         <!-- Stream meta row -->
         <div class="flex flex-wrap gap-x-4 gap-y-1 px-4 pb-3 text-xs text-slate-600">
-          <span>Server: <span class="font-mono text-slate-500">192.168.100.2</span></span>
+          <span>Server: <span class="font-mono text-slate-500">100.74.162.72</span></span>
           <span>Source: <span id="meta-source" class="font-mono text-slate-500">hikvision_sub</span></span>
           <span>
             go2rtc:
-            <a href="http://192.168.100.2:1984" target="_blank"
+            <a href="http://100.74.162.72:1984" target="_blank"
                class="font-mono text-emerald-700 hover:text-emerald-500 transition-colors">
               :1984
             </a>
           </span>
           <span>
             Frigate:
-            <a href="http://192.168.100.2:5000" target="_blank"
+            <a href="http://100.74.162.72:5000" target="_blank"
                class="font-mono text-emerald-700 hover:text-emerald-500 transition-colors">
               :5000
             </a>
@@ -237,7 +237,7 @@
         </div>
         <div class="bg-slate-900 rounded-xl border border-slate-800 p-3">
           <p class="text-xs text-slate-500 mb-1">NVR Address</p>
-          <p class="text-sm font-semibold text-slate-200 font-mono">192.168.100.2</p>
+          <p class="text-sm font-semibold text-slate-200 font-mono">100.74.162.72</p>
         </div>
       </div>
 
@@ -364,7 +364,7 @@
           Quick Access
         </h3>
         <div class="space-y-1">
-          <a href="http://192.168.100.2:1984" target="_blank"
+          <a href="http://100.74.162.72:1984" target="_blank"
              class="flex items-center justify-between p-2 rounded-lg hover:bg-slate-800
                     transition-colors group">
             <span class="text-sm text-slate-300 group-hover:text-white">go2rtc UI</span>
@@ -375,7 +375,7 @@
                    A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
             </svg>
           </a>
-          <a href="http://192.168.100.2:5000" target="_blank"
+          <a href="http://100.74.162.72:5000" target="_blank"
              class="flex items-center justify-between p-2 rounded-lg hover:bg-slate-800
                     transition-colors group">
             <span class="text-sm text-slate-300 group-hover:text-white">Frigate Dashboard</span>
@@ -386,7 +386,7 @@
                    A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
             </svg>
           </a>
-          <a href="http://192.168.100.2:1984/api/stream.m3u8?src=hikvision_sub" target="_blank"
+          <a href="http://100.74.162.72:1984/api/stream.m3u8?src=hikvision_sub" target="_blank"
              class="flex items-center justify-between p-2 rounded-lg hover:bg-slate-800
                     transition-colors group">
             <span class="text-sm text-slate-300 group-hover:text-white">HLS Sub URL</span>
@@ -397,7 +397,7 @@
                    A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
             </svg>
           </a>
-          <a href="http://192.168.100.2:1984/api/stream.m3u8?src=hikvision_main" target="_blank"
+          <a href="http://100.74.162.72:1984/api/stream.m3u8?src=hikvision_main" target="_blank"
              class="flex items-center justify-between p-2 rounded-lg hover:bg-slate-800
                     transition-colors group">
             <span class="text-sm text-slate-300 group-hover:text-white">HLS Main (4K) URL</span>

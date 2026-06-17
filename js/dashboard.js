@@ -3,14 +3,14 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 const CONFIG = {
-  server:      '192.168.100.2',
+  server:      '100.74.162.72',
   frigatePort: 5000,
 
   // Option A — port 1984 exposed in docker-compose (recommended):
-  go2rtcBase: 'http://192.168.100.2:1984',
+  go2rtcBase: 'http://100.74.162.72:1984',
 
   // Option B — no port 1984 needed; Frigate proxies go2rtc at /go2rtc/:
-  // go2rtcBase: 'http://192.168.100.2:5000/go2rtc',
+  // go2rtcBase: 'http://100.74.162.72:5000/go2rtc',
 
   streams: {
     sub:  { name: 'hikvision_sub',  label: 'Sub Stream (720p)' },
