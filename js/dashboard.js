@@ -2,7 +2,7 @@
 // dashboard.js — Multi-camera grid, modal player, clock, system status
 // ─────────────────────────────────────────────────────────────────────────────
 
-const SERVER      = '192.168.100.2'
+const SERVER      = 'cctv.smk.local'
 const GO2RTC_BASE = `http://${SERVER}:1984`
 const FRIGATE_BASE = `http://${SERVER}:5000`
 
