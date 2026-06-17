@@ -88,7 +88,7 @@ function buildTile(cam) {
   div.innerHTML = `
     <iframe
       id="tile-iframe-${cam.id}"
-      src="${GO2RTC_BASE}/stream.html?src=${cam.subSrc}&mode=webrtc"
+      src="${GO2RTC_BASE}/stream.html?src=${cam.subSrc}&mode=mse"
       allow="autoplay; camera; microphone"
       title="${cam.name}"
     ></iframe>
@@ -179,7 +179,7 @@ class ModalPlayer {
   constructor(cam) {
     this.cam      = cam
     this.quality  = 'sub'
-    this.protocol = 'webrtc'
+    this.protocol = 'mse'
     this.hlsInst  = null
 
     this._iframe = document.getElementById('modal-iframe')
@@ -195,12 +195,12 @@ class ModalPlayer {
 
   _load() {
     this._updateUI()
-    this.protocol === 'webrtc' ? this._loadWebRTC() : this._loadHLS()
+    this.protocol === 'hls' ? this._loadHLS() : this._loadStream()
   }
 
-  _loadWebRTC() {
+  _loadStream() {
     this._destroyHLS()
-    this._iframe.src = `${GO2RTC_BASE}/stream.html?src=${this._src().name}&mode=webrtc`
+    this._iframe.src = `${GO2RTC_BASE}/stream.html?src=${this._src().name}&mode=${this.protocol}`
     this._iframe.classList.remove('hidden')
     this._video.classList.add('hidden')
   }
@@ -234,7 +234,7 @@ class ModalPlayer {
     const isHLS = this.protocol === 'hls'
 
     const qLabel = isHD  ? 'Switch ke Sub (720p)' : 'Switch ke Main (4K)'
-    const pLabel = isHLS ? 'WebRTC Mode'           : 'HLS Fallback'
+    const pLabel = isHLS ? 'MSE Mode'             : 'HLS Fallback'
 
     const btnQ = document.getElementById('modal-btn-quality')
     const btnP = document.getElementById('modal-btn-protocol')
@@ -243,7 +243,7 @@ class ModalPlayer {
 
     const bProto   = document.getElementById('modal-badge-proto')
     const bQuality = document.getElementById('modal-badge-quality')
-    if (bProto)   bProto.textContent   = isHLS ? 'HLS' : 'WebRTC'
+    if (bProto)   bProto.textContent   = isHLS ? 'HLS' : 'MSE'
     if (bQuality) bQuality.textContent = isHD  ? 'Main (4K)' : 'Sub (720p)'
   }
 
@@ -253,7 +253,7 @@ class ModalPlayer {
   }
 
   toggleProtocol() {
-    this.protocol = this.protocol === 'webrtc' ? 'hls' : 'webrtc'
+    this.protocol = this.protocol === 'mse' ? 'hls' : 'mse'
     this._load()
   }
 
