@@ -88,7 +88,7 @@ function buildTile(cam) {
   div.innerHTML = `
     <iframe
       id="tile-iframe-${cam.id}"
-      src="${GO2RTC_BASE}/links.html?src=${cam.subSrc}&mode=webrtc"
+      src="${GO2RTC_BASE}/stream.html?src=${cam.subSrc}&mode=webrtc"
       allow="autoplay; camera; microphone"
       title="${cam.name}"
     ></iframe>
@@ -200,7 +200,7 @@ class ModalPlayer {
 
   _loadWebRTC() {
     this._destroyHLS()
-    this._iframe.src = `${GO2RTC_BASE}/links.html?src=${this._src().name}&mode=webrtc`
+    this._iframe.src = `${GO2RTC_BASE}/stream.html?src=${this._src().name}&mode=webrtc`
     this._iframe.classList.remove('hidden')
     this._video.classList.add('hidden')
   }
