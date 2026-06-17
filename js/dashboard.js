@@ -65,8 +65,8 @@ function buildTile(cam) {
         <span class="live-pulse w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
         <button onclick="openModal('${cam.id}')"
                 title="Perbesar"
-                class="p-1 rounded bg-black/40 hover:bg-black/70 text-white/60 hover:text-white transition-colors">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                class="p-2 rounded bg-black/40 hover:bg-black/70 text-white/60 hover:text-white transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round"
               d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5
                  m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9
@@ -81,11 +81,33 @@ function buildTile(cam) {
 
 function applyGridLayout(count) {
   const grid = document.getElementById('camera-grid')
+  const w    = window.innerWidth
 
   // Reset
   grid.style.cssText = ''
   grid.style.gap = '8px'
 
+  // Mobile-first: 1 column on small screens
+  if (w < 640) {
+    grid.style.gridTemplateColumns = '1fr'
+    if (count <= 2) grid.style.height = '100%'
+    return
+  }
+
+  // Tablet: up to 2 columns
+  if (w < 1024) {
+    if (count === 1) {
+      grid.style.gridTemplateColumns = '1fr'
+      grid.style.height = '100%'
+    } else {
+      const cols = Math.min(count, 2)
+      grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`
+      if (count <= 4) grid.style.height = '100%'
+    }
+    return
+  }
+
+  // Desktop: existing multi-column logic
   if (count === 1) {
     grid.style.gridTemplateColumns = '1fr'
     grid.style.height = '100%'
@@ -102,7 +124,6 @@ function applyGridLayout(count) {
     grid.style.height = '100%'
   } else {
     grid.style.gridTemplateColumns = 'repeat(3, 1fr)'
-    // let it scroll naturally
   }
 }
 
@@ -224,6 +245,9 @@ function openModal(camId) {
   const cam = CAMERAS.find(c => c.id === camId)
   if (!cam) return
 
+  // Close sidebar on mobile when opening a camera
+  closeSidebar()
+
   document.getElementById('modal-cam-name').textContent     = cam.name
   document.getElementById('modal-cam-location').textContent = cam.location
 
@@ -242,6 +266,32 @@ function closeModal() {
 
 function _modalEscListener(e) {
   if (e.key === 'Escape') closeModal()
+}
+
+// ─── Sidebar toggle (mobile drawer) ──────────────────────────────────────────
+
+function toggleSidebar() {
+  const sidebar  = document.getElementById('sidebar')
+  const backdrop = document.getElementById('sidebar-backdrop')
+  if (!sidebar) return
+
+  const isOpen = sidebar.classList.contains('translate-x-0')
+
+  sidebar.classList.toggle('translate-x-full', isOpen)
+  sidebar.classList.toggle('translate-x-0', !isOpen)
+
+  if (backdrop) {
+    backdrop.classList.toggle('hidden', isOpen)
+  }
+}
+
+function closeSidebar() {
+  const sidebar  = document.getElementById('sidebar')
+  const backdrop = document.getElementById('sidebar-backdrop')
+  if (!sidebar) return
+  sidebar.classList.remove('translate-x-0')
+  sidebar.classList.add('translate-x-full')
+  if (backdrop) backdrop.classList.add('hidden')
 }
 
 // ─── Dark mode ────────────────────────────────────────────────────────────────
@@ -342,6 +392,18 @@ function checkSystemStatus() {
 
 document.addEventListener('DOMContentLoaded', () => {
   renderCameras()
+
+  // Re-layout grid on resize / orientation change
+  let resizeTimer
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer)
+    resizeTimer = setTimeout(() => applyGridLayout(CAMERAS.length), 150)
+  })
+
+  // ESC closes sidebar on mobile
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeSidebar()
+  })
 
   updateClock()
   setInterval(updateClock, 1000)
