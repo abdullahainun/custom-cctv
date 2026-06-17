@@ -2,7 +2,7 @@
 // dashboard.js — Multi-camera grid, modal player, clock, system status
 // ─────────────────────────────────────────────────────────────────────────────
 
-const SERVER      = '100.74.162.72'
+const SERVER      = '192.168.100.2'
 const GO2RTC_BASE = `http://${SERVER}:1984`
 const FRIGATE_BASE = `http://${SERVER}:5000`
 
@@ -450,4 +450,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   checkSystemStatus()
   setInterval(checkSystemStatus, 30_000)
+
+  // Initialise dashboard quick links from SERVER constant
+  const linkGo2rtc = document.getElementById('link-go2rtc')
+  const linkFrigate = document.getElementById('link-frigate')
+  if (linkGo2rtc)  linkGo2rtc.href  = `${GO2RTC_BASE}`
+  if (linkFrigate) linkFrigate.href = `${FRIGATE_BASE}`
 })
