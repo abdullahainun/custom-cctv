@@ -59,25 +59,12 @@ function buildEventElement(event) {
   const time = formatTime(event.timestamp)
 
   const el = document.createElement('div')
-  el.className =
-    `detection-enter flex items-start gap-2.5 p-2.5 rounded-lg border
-     ${cfg.borderClass} ${cfg.bgClass}`
+  el.className = `det-enter flex items-center gap-2 px-2 py-1.5 rounded`
   el.innerHTML = `
-    <div class="mt-1 flex-shrink-0">
-      <span class="block w-2 h-2 rounded-full ${cfg.dotClass}"></span>
-    </div>
-    <div class="flex-1 min-w-0">
-      <div class="flex items-center justify-between gap-1">
-        <span class="text-sm font-medium ${cfg.textClass}">${cfg.label}</span>
-        <span class="text-xs text-slate-600 flex-shrink-0 tabular-nums">${time}</span>
-      </div>
-      <div class="flex items-center justify-between mt-0.5">
-        <span class="text-xs text-slate-500 truncate">${event.zone}</span>
-        <span class="text-xs text-slate-600 flex-shrink-0 ml-2 tabular-nums">
-          ${event.confidence}%
-        </span>
-      </div>
-    </div>
+    <span class="w-1.5 h-1.5 rounded-full flex-shrink-0 ${cfg.dotClass}"></span>
+    <span class="text-xs font-medium ${cfg.textClass} flex-shrink-0">${cfg.label}</span>
+    <span class="text-xs text-zinc-600 truncate flex-1">${event.zone}</span>
+    <span class="text-xs text-zinc-700 flex-shrink-0 tabular-nums">${time}</span>
   `
   return el
 }

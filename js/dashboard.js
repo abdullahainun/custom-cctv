@@ -1,139 +1,192 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// dashboard.js — Stream player logic, UI controls, clock, system status checks
+// dashboard.js — Multi-camera grid, modal player, clock, system status
 // ─────────────────────────────────────────────────────────────────────────────
 
-const CONFIG = {
-  server:      '100.74.162.72',
-  frigatePort: 5000,
+const SERVER      = '100.74.162.72'
+const GO2RTC_BASE = `http://${SERVER}:1984`
+const FRIGATE_BASE = `http://${SERVER}:5000`
 
-  // Option A — port 1984 exposed in docker-compose (recommended):
-  go2rtcBase: 'http://100.74.162.72:1984',
+// ─── Camera list ──────────────────────────────────────────────────────────────
+// Add more entries here to display additional cameras in the grid.
 
-  // Option B — no port 1984 needed; Frigate proxies go2rtc at /go2rtc/:
-  // go2rtcBase: 'http://100.74.162.72:5000/go2rtc',
-
-  streams: {
-    sub:  { name: 'hikvision_sub',  label: 'Sub Stream (720p)' },
-    main: { name: 'hikvision_main', label: 'Main Stream (4K)'  },
+const CAMERAS = [
+  {
+    id:       'cam01',
+    name:     'Kamera 01',
+    location: 'Gerbang Utama',
+    subSrc:   'hikvision_sub',
+    mainSrc:  'hikvision_main',
   },
+  // {
+  //   id:       'cam02',
+  //   name:     'Kamera 02',
+  //   location: 'Koridor',
+  //   subSrc:   'cam02_sub',
+  //   mainSrc:  'cam02_main',
+  // },
+  // {
+  //   id:       'cam03',
+  //   name:     'Kamera 03',
+  //   location: 'Area Parkir',
+  //   subSrc:   'cam03_sub',
+  //   mainSrc:  'cam03_main',
+  // },
+  // {
+  //   id:       'cam04',
+  //   name:     'Kamera 04',
+  //   location: 'Lapangan',
+  //   subSrc:   'cam04_sub',
+  //   mainSrc:  'cam04_main',
+  // },
+]
+
+// ─── Camera grid rendering ────────────────────────────────────────────────────
+
+function buildTile(cam) {
+  const div = document.createElement('div')
+  div.id        = `tile-${cam.id}`
+  div.className = 'cam-tile'
+
+  div.innerHTML = `
+    <iframe
+      id="tile-iframe-${cam.id}"
+      src="${GO2RTC_BASE}/links.html?src=${cam.subSrc}&mode=webrtc"
+      allow="autoplay; camera; microphone"
+      title="${cam.name}"
+    ></iframe>
+
+    <!-- Bottom overlay: always visible label + expand button -->
+    <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent pt-8 pb-2 px-2.5 flex items-end justify-between">
+      <div class="leading-none">
+        <div class="text-xs font-medium text-white/90">${cam.name}</div>
+        <div class="text-xs text-white/50 mt-0.5">${cam.location}</div>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="live-pulse w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+        <button onclick="openModal('${cam.id}')"
+                title="Perbesar"
+                class="p-1 rounded bg-black/40 hover:bg-black/70 text-white/60 hover:text-white transition-colors">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5
+                 m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9
+                 m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  `
+  return div
 }
 
-// ─── StreamPlayer ─────────────────────────────────────────────────────────────
+function applyGridLayout(count) {
+  const grid = document.getElementById('camera-grid')
 
-class StreamPlayer {
-  constructor() {
-    this.quality   = 'sub'     // 'sub' | 'main'
-    this.protocol  = 'webrtc'  // 'webrtc' | 'hls'
-    this.hlsInst   = null
+  // Reset
+  grid.style.cssText = ''
+  grid.style.gap = '8px'
 
-    this._iframe = document.getElementById('player-iframe')
-    this._video  = document.getElementById('player-video')
+  if (count === 1) {
+    grid.style.gridTemplateColumns = '1fr'
+    grid.style.height = '100%'
+  } else if (count === 2) {
+    grid.style.gridTemplateColumns = 'repeat(2, 1fr)'
+    grid.style.height = '100%'
+  } else if (count <= 4) {
+    grid.style.gridTemplateColumns = 'repeat(2, 1fr)'
+    grid.style.gridTemplateRows  = 'repeat(2, 1fr)'
+    grid.style.height = '100%'
+  } else if (count <= 6) {
+    grid.style.gridTemplateColumns = 'repeat(3, 1fr)'
+    grid.style.gridTemplateRows  = 'repeat(2, 1fr)'
+    grid.style.height = '100%'
+  } else {
+    grid.style.gridTemplateColumns = 'repeat(3, 1fr)'
+    // let it scroll naturally
+  }
+}
+
+function renderCameras() {
+  const grid = document.getElementById('camera-grid')
+  grid.innerHTML = ''
+
+  CAMERAS.forEach(cam => grid.appendChild(buildTile(cam)))
+  applyGridLayout(CAMERAS.length)
+}
+
+// ─── Modal player ─────────────────────────────────────────────────────────────
+
+class ModalPlayer {
+  constructor(cam) {
+    this.cam      = cam
+    this.quality  = 'sub'
+    this.protocol = 'webrtc'
+    this.hlsInst  = null
+
+    this._iframe = document.getElementById('modal-iframe')
+    this._video  = document.getElementById('modal-video')
 
     this._load()
   }
 
-  // ── Internal helpers ────────────────────────────────────────────────────────
-
-  _base() {
-    return CONFIG.go2rtcBase
-  }
-
-  _streamName() {
-    return CONFIG.streams[this.quality].name
+  _src() {
+    const name = this.quality === 'sub' ? this.cam.subSrc : this.cam.mainSrc
+    return { name }
   }
 
   _load() {
     this._updateUI()
-    if (this.protocol === 'webrtc') {
-      this._loadWebRTC()
-    } else {
-      this._loadHLS()
-    }
+    this.protocol === 'webrtc' ? this._loadWebRTC() : this._loadHLS()
   }
 
   _loadWebRTC() {
     this._destroyHLS()
-    const url = `${this._base()}/links.html?src=${this._streamName()}&mode=webrtc`
-    this._iframe.src = url
+    this._iframe.src = `${GO2RTC_BASE}/links.html?src=${this._src().name}&mode=webrtc`
     this._iframe.classList.remove('hidden')
     this._video.classList.add('hidden')
   }
 
   _loadHLS() {
-    // Blank out the iframe so WebRTC stops consuming bandwidth
     this._iframe.src = 'about:blank'
     this._iframe.classList.add('hidden')
     this._video.classList.remove('hidden')
 
-    const url = `${this._base()}/api/stream.m3u8?src=${this._streamName()}`
+    const url = `${GO2RTC_BASE}/api/stream.m3u8?src=${this._src().name}`
 
     if (window.Hls && Hls.isSupported()) {
       this._destroyHLS()
-      this.hlsInst = new Hls({
-        enableWorker:    true,
-        lowLatencyMode:  true,
-        backBufferLength: 10,
-      })
+      this.hlsInst = new Hls({ enableWorker: true, lowLatencyMode: true, backBufferLength: 10 })
       this.hlsInst.loadSource(url)
       this.hlsInst.attachMedia(this._video)
-      this.hlsInst.on(Hls.Events.MANIFEST_PARSED, () => {
-        this._video.play().catch(() => {})
-      })
-      this.hlsInst.on(Hls.Events.ERROR, (_, data) => {
-        if (data.fatal) {
-          console.error('[HLS] Fatal:', data.type, data.details)
-        }
-      })
+      this.hlsInst.on(Hls.Events.MANIFEST_PARSED, () => this._video.play().catch(() => {}))
+      this.hlsInst.on(Hls.Events.ERROR, (_, d) => { if (d.fatal) console.error('[HLS]', d) })
     } else if (this._video.canPlayType('application/vnd.apple.mpegurl')) {
-      // Safari native HLS
       this._video.src = url
       this._video.play().catch(() => {})
-    } else {
-      console.warn('[HLS] Not supported in this browser. Try WebRTC mode.')
     }
   }
 
   _destroyHLS() {
-    if (this.hlsInst) {
-      this.hlsInst.destroy()
-      this.hlsInst = null
-    }
+    if (this.hlsInst) { this.hlsInst.destroy(); this.hlsInst = null }
   }
 
-  // ── UI sync ─────────────────────────────────────────────────────────────────
-
   _updateUI() {
-    const stream = CONFIG.streams[this.quality]
     const isHD  = this.quality  === 'main'
     const isHLS = this.protocol === 'hls'
 
-    // Quality button
-    const btnQ = document.getElementById('btn-quality')
-    const lblQ = document.getElementById('lbl-quality')
-    if (isHD) {
-      btnQ.classList.add('bg-emerald-600', 'text-white')
-      btnQ.classList.remove('bg-slate-800', 'text-slate-300')
-      lblQ.textContent = 'Switch to SD'
-    } else {
-      btnQ.classList.remove('bg-emerald-600', 'text-white')
-      btnQ.classList.add('bg-slate-800', 'text-slate-300')
-      lblQ.textContent = 'Switch to HD'
-    }
+    const qLabel = isHD  ? 'Switch ke Sub (720p)' : 'Switch ke Main (4K)'
+    const pLabel = isHLS ? 'WebRTC Mode'           : 'HLS Fallback'
 
-    // Protocol button label
-    document.getElementById('lbl-protocol').textContent = isHLS ? 'WebRTC Mode' : 'HLS Fallback'
+    const btnQ = document.getElementById('modal-btn-quality')
+    const btnP = document.getElementById('modal-btn-protocol')
+    if (btnQ) btnQ.textContent = qLabel
+    if (btnP) btnP.textContent = pLabel
 
-    // Info badges
-    document.getElementById('badge-protocol').textContent   = isHLS ? 'HLS' : 'WebRTC'
-    document.getElementById('badge-resolution').textContent = stream.label
-    document.getElementById('meta-source').textContent      = stream.name
-
-    // Diagnostic cards
-    document.getElementById('diag-protocol').textContent = isHLS ? 'HLS (hls.js)' : 'WebRTC'
-    document.getElementById('diag-quality').textContent  = isHD ? 'Main Stream (4K)' : 'Sub Stream (720p)'
+    const bProto   = document.getElementById('modal-badge-proto')
+    const bQuality = document.getElementById('modal-badge-quality')
+    if (bProto)   bProto.textContent   = isHLS ? 'HLS' : 'WebRTC'
+    if (bQuality) bQuality.textContent = isHD  ? 'Main (4K)' : 'Sub (720p)'
   }
-
-  // ── Public API ──────────────────────────────────────────────────────────────
 
   toggleQuality() {
     this.quality = this.quality === 'sub' ? 'main' : 'sub'
@@ -144,17 +197,51 @@ class StreamPlayer {
     this.protocol = this.protocol === 'webrtc' ? 'hls' : 'webrtc'
     this._load()
   }
+
+  requestFullscreen() {
+    const wrap = document.getElementById('modal-player-wrap')
+    if (!document.fullscreenElement) {
+      wrap.requestFullscreen().catch(err => console.error('[Fullscreen]', err))
+    } else {
+      document.exitFullscreen()
+    }
+  }
+
+  destroy() {
+    this._destroyHLS()
+    this._iframe.src = 'about:blank'
+    this._video.src  = ''
+    this._iframe.classList.remove('hidden')
+    this._video.classList.add('hidden')
+  }
 }
 
-// ─── Fullscreen ───────────────────────────────────────────────────────────────
+// ─── Modal open / close ───────────────────────────────────────────────────────
 
-function toggleFullscreen() {
-  const container = document.getElementById('player-container')
-  if (!document.fullscreenElement) {
-    container.requestFullscreen().catch(err => console.error('[Fullscreen]', err))
-  } else {
-    document.exitFullscreen()
-  }
+let modalPlayer = null
+
+function openModal(camId) {
+  const cam = CAMERAS.find(c => c.id === camId)
+  if (!cam) return
+
+  document.getElementById('modal-cam-name').textContent     = cam.name
+  document.getElementById('modal-cam-location').textContent = cam.location
+
+  if (modalPlayer) modalPlayer.destroy()
+  modalPlayer = new ModalPlayer(cam)
+
+  document.getElementById('camera-modal').classList.remove('hidden')
+  document.addEventListener('keydown', _modalEscListener)
+}
+
+function closeModal() {
+  document.getElementById('camera-modal').classList.add('hidden')
+  if (modalPlayer) { modalPlayer.destroy(); modalPlayer = null }
+  document.removeEventListener('keydown', _modalEscListener)
+}
+
+function _modalEscListener(e) {
+  if (e.key === 'Escape') closeModal()
 }
 
 // ─── Dark mode ────────────────────────────────────────────────────────────────
@@ -187,36 +274,34 @@ function updateClock() {
 // ─── System status ────────────────────────────────────────────────────────────
 
 function setServiceStatus(name, online) {
-  const color     = online ? 'bg-emerald-500' : 'bg-red-500'
-  const labelText = online ? 'Online' : 'Unreachable'
-  const labelCls  = online ? 'text-xs text-emerald-500' : 'text-xs text-red-500'
+  const color = online ? 'bg-emerald-500' : 'bg-red-500'
+  const text  = online ? 'Online'         : 'Unreachable'
+  const cls   = online ? 'text-xs text-emerald-500' : 'text-xs text-red-500'
 
   for (const id of [`sys-dot-${name}`, `hdr-dot-${name}`]) {
     const el = document.getElementById(id)
     if (!el) continue
-    el.classList.remove('bg-slate-600', 'bg-emerald-500', 'bg-red-500')
+    el.classList.remove('bg-zinc-600', 'bg-emerald-500', 'bg-red-500', 'bg-amber-500')
     el.classList.add(color)
   }
 
   const sysLbl = document.getElementById(`sys-lbl-${name}`)
-  if (sysLbl) { sysLbl.textContent = labelText; sysLbl.className = labelCls }
-
-  const hdrLbl = document.getElementById(`hdr-lbl-${name}`)
-  if (hdrLbl) {
-    hdrLbl.textContent = labelText
-    hdrLbl.className = online ? 'text-xs text-emerald-600' : 'text-xs text-red-500'
-  }
+  if (sysLbl) { sysLbl.textContent = text; sysLbl.className = cls }
 }
 
-// Chrome 104+ Private Network Access (PNA) policy blocks requests from localhost to
-// 192.168.x.x before they leave the browser — onerror fires in < 5 ms.
-// A genuine connection-refused on LAN takes ~1-10 ms; a real server response takes ≥ 80 ms.
-// We use three states:
-//   • onload             → Online  (green)
-//   • onerror ≥ 80 ms   → Online  (server replied, content just wasn't an image)
-//   • timeout (4 s)      → Unreachable (red)
-//   • onerror < 80 ms   → Unknown (amber) — PNA block or instant-refused; can't tell
-function pingService(name, probeBase) {
+function setServiceStatusUnknown(name) {
+  for (const id of [`sys-dot-${name}`, `hdr-dot-${name}`]) {
+    const el = document.getElementById(id)
+    if (!el) continue
+    el.classList.remove('bg-zinc-600', 'bg-emerald-500', 'bg-red-500')
+    el.classList.add('bg-amber-500')
+  }
+  const sysLbl = document.getElementById(`sys-lbl-${name}`)
+  if (sysLbl) { sysLbl.textContent = 'Unknown'; sysLbl.className = 'text-xs text-amber-500' }
+}
+
+// Probes a service via image ping. Chrome PNA blocks LAN requests from localhost < 80 ms.
+function pingService(name, base) {
   return new Promise(resolve => {
     const img   = new Image()
     const start = Date.now()
@@ -224,7 +309,7 @@ function pingService(name, probeBase) {
     const timer = setTimeout(() => {
       img.onload = img.onerror = null
       img.src = ''
-      setServiceStatus(name, false)   // 4 s timeout → genuinely unreachable
+      setServiceStatus(name, false)
       resolve()
     }, 4000)
 
@@ -236,41 +321,27 @@ function pingService(name, probeBase) {
 
     img.onerror = () => {
       clearTimeout(timer)
-      const elapsed = Date.now() - start
-      if (elapsed >= 80) {
-        setServiceStatus(name, true)   // server responded (non-image body) → online
+      if (Date.now() - start >= 80) {
+        setServiceStatus(name, true)
       } else {
-        setServiceStatusUnknown(name)  // < 80 ms → PNA block or instant refused
+        setServiceStatusUnknown(name)
       }
       resolve()
     }
 
-    img.src = `${probeBase}/?_t=${Date.now()}`
+    img.src = `${base}/?_t=${Date.now()}`
   })
 }
 
-function setServiceStatusUnknown(name) {
-  for (const id of [`sys-dot-${name}`, `hdr-dot-${name}`]) {
-    const el = document.getElementById(id)
-    if (!el) continue
-    el.classList.remove('bg-slate-600', 'bg-emerald-500', 'bg-red-500')
-    el.classList.add('bg-amber-500')
-  }
-  const sysLbl = document.getElementById(`sys-lbl-${name}`)
-  if (sysLbl) { sysLbl.textContent = 'Unknown'; sysLbl.className = 'text-xs text-amber-500' }
-  const hdrLbl = document.getElementById(`hdr-lbl-${name}`)
-  if (hdrLbl) { hdrLbl.textContent = 'Unknown'; hdrLbl.className = 'text-xs text-amber-500' }
-}
-
 function checkSystemStatus() {
-  pingService('go2rtc',  CONFIG.go2rtcBase)
-  pingService('frigate', `http://${CONFIG.server}:${CONFIG.frigatePort}`)
+  pingService('go2rtc',  GO2RTC_BASE)
+  pingService('frigate', FRIGATE_BASE)
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
-  window.player = new StreamPlayer()
+  renderCameras()
 
   updateClock()
   setInterval(updateClock, 1000)
